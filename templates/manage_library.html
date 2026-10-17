@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Library</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0 auto; padding: 20px; max-width: 900px; background-color: #f4f4f9; }
+        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        .btn-edit { color: #fb8c00; text-decoration: none; font-weight: bold; margin-right: 15px; }
+        .btn-delete { color: #ea4335; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📚 Habit Library Management</h2>
+        <a href="/" style="text-decoration: none; color: #1a73e8;">⬅ Back to Dashboard</a>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Habit Name</th>
+                    <th>Goal/Unit</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in all_habits %}
+                <tr>
+                    <td><strong>{{ h.name }}</strong></td>
+                    <td>{{ h.goal }} {{ h.unit }}</td>
+                    <td>
+                        <a href="/edit_habit/{{ h.id }}" class="btn-edit">✎ Edit</a>
+                        <a href="/delete_habit/{{ h.id }}" class="btn-delete" onclick="return confirm('Permanently delete {{ h.name }}?')">✕ Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

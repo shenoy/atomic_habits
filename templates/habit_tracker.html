@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ habit.name }} Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
+        .container { background: white; padding: 20px; border-radius: 12px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input { padding: 10px; width: 70%; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        button { padding: 10px 20px; background: #1a73e8; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1557b0; }
+
+        /* Archive module style card */
+        .archive-card {
+            background: #e8f0fe;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #cbdcf7;
+            margin: 25px 0;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" style="text-decoration: none; color: #1a73e8; font-weight: bold;">← Home</a>
+        <h1>{{ habit.name }} Tracker</h1>
+        <p>Goal: <strong>{{ habit.goal }} {{ habit.unit }}</strong> per day.</p>
+
+        <div style="background: #e8f0fe; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0;">
+            <h2 style="margin:0;">Total Today: {{ total }} {{ habit.unit }}</h2>
+            <progress value="{{ total }}" max="{{ habit.goal }}" style="width: 100%; height: 20px; margin-top: 10px;"></progress>
+        </div>
+
+          <form method="POST" style="margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start;">
+            <!-- FIX: Swapped input type="textarea" for a proper textarea element -->
+            <textarea name="activity" placeholder="Item (e.g. Book Name / Exercise)" required style="width: 60%; height: 40px; box-sizing: border-box; resize: vertical;"></textarea>
+            <input type="number" name="value" placeholder="{{ habit.unit }}" required style="width: 25%; height: 40px; box-sizing: border-box;">
+            <button type="submit" style="height: 40px;">Log</button>
+        </form>
+
+        <div class="archive-card">
+            <h3 style="margin-top: 0; color: #1a73e8; display: flex; align-items: center; gap: 6px;">🏆 Finish this Tracker?</h3>
+            <p style="color: #5f6368; font-size: 0.9em; margin-bottom: 15px; line-height: 1.4;">
+                Finished your book or reached your structural milestones? Moving this will cleanly archive it from your active daily dashboard loops into your <strong>Completed History</strong> space.
+            </p>
+            <form action="/complete_habit_permanently/{{ habit.id }}" method="POST" onsubmit="return confirm('Are you sure you want to move &ldquo;{{ habit.name }}&rdquo; to the Completed History Tab?');">
+                <button type="submit" style="background: #1a73e8; border-radius: 6px; padding: 10px 18px;">
+                    Move to Completed Tab
+                </button>
+            </form>
+        </div>
+
+        <hr>
+        <h3>Today's Details:</h3>
+        <ul>
+        {% for log in today_logs %}
+            <li style="margin-bottom: 8px;">
+                <span style="color: #666; font-size: 0.9em;">[{{ log.time_created }}]</span>
+                <!-- This forces HTML to respect and render the line breaks naturally -->
+                <strong style="white-space: pre-line;">{{ log.activity_name }}</strong>: {{ log.value }} {{ habit.unit }}
+                <a href="{{ url_for('edit_habit_log', log_id=log.id) }}" style="margin-left: 10px; color: #1a73e8; text-decoration: none;">[Edit]</a>
+                <a href="{{ url_for('delete_habit_log', log_id=log.id) }}" style="color: red; text-decoration: none;">[x]</a>
+            </li>
+        {% else %}
+            <li>No entries for today yet.</li>
+        {% endfor %}
+        </ul>
+
+        <hr>
+        <h3>Historical Data</h3>
+        <canvas id="habitChart" width="400" height="200"></canvas>
+
+        <h3>Full Historical Logs</h3>
+        <div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #ddd; text-align: left;">
+                        <th>Date / Time</th>
+                        <th>Item</th>
+                        <th>Value</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for log in all_logs %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0;">{{ log.date_created.strftime('%Y-%m-%d') }}<small style="color: #888;">({{ log.time_created }})</small></td>
+                    <td>{{ log.activity_name }}</td>
+                    <td>{{ log.value }} {{ habit.unit }}</td>
+                    <td>
+                        <a href="{{ url_for('edit_habit_log', log_id=log.id) }}" style="color: #1a73e8; text-decoration: none; margin-right: 10px;">[Edit]</a>
+                        <a href="{{ url_for('delete_habit_log', log_id=log.id) }}" style="color: red; text-decoration: none;">[x]</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('habitChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {{ labels|tojson }},
+                datasets: [{
+                    label: '{{ habit.unit }} recorded',
+                    data: {{ values|tojson }},
+                    backgroundColor: 'rgba(26, 115, 232, 0.6)',
+                    borderColor: '#1a73e8',
+                    borderWidth: 1
+                }]
+            },
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+    </script>
+</body>
+</html>

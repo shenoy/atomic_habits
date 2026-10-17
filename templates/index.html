@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Atomic Habits</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0 auto;
+        padding: 40px 20px;
+        max-width: 900px;
+        background-color: #f4f4f9;
+    }
+
+    .container {
+        background: white;
+        padding: 30px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+
+    /* --- TABS SYSTEM --- */
+    .tabs-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 25px;
+        border-bottom: 2px solid #eef0f2;
+        padding-bottom: 10px;
+    }
+
+    .tab-btn {
+        padding: 10px 20px;
+        border: none;
+        background: none;
+        font-size: 16px;
+        font-weight: bold;
+        color: #5f6368;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+        background: #f0f2f5;
+        color: #1a73e8;
+    }
+
+    .tab-btn.active {
+        color: #1a73e8;
+        background: #e8f0fe;
+    }
+
+    /* Tab content view switching */
+    .tab-content {
+        display: none;
+    }
+    .tab-content.active {
+        display: block;
+    }
+
+    /* --- CARD STYLING --- */
+    .habit-list-wrapper {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .habit-card {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 14px 22px;
+        min-width: 130px;
+        color: white;
+        text-decoration: none;
+        border-radius: 12px;
+        font-weight: bold;
+        font-size: 14px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        box-sizing: border-box;
+    }
+
+    .habit-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 7px 14px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-atomic { background: #673ab7; }
+    .card-completed { background: #1a73e8; }
+    .card-pending { background: #34a853; }
+    .card-manage { background: #5f6368; }
+
+    .sortable-ghost {
+        opacity: 0.4;
+        border: 2px dashed #673ab7;
+        border-radius: 12px;
+    }
+
+    /* Form Styling */
+    .form-container {
+        margin-top: 35px;
+        padding: 25px;
+        background: #fff3e0;
+        border-radius: 12px;
+        border: 1px solid #ffe0b2;
+    }
+    .form-container h3 { margin-top: 0; margin-bottom: 15px; color: #e65100; }
+    .habit-form { display: flex; gap: 10px; flex-wrap: wrap; }
+    .habit-form input {
+        padding: 10px 14px;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        font-size: 14px;
+        flex: 1;
+        min-width: 120px;
+    }
+    .habit-form button {
+        padding: 10px 20px;
+        background: #fb8c00;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .habit-form button:hover { background: #e65100; }
+
+    @media (max-width: 600px) {
+        body { padding: 10px; max-width: 100%; }
+        .container { padding: 20px 15px; border-radius: 12px; }
+        .habit-list-wrapper { justify-content: center; }
+        .habit-card { width: 100%; min-width: 100%; }
+        .habit-item { width: 100%; }
+        .habit-form { flex-direction: column; }
+        .habit-form input { width: 100%; box-sizing: border-box; }
+    }
+</style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="tabs-container">
+            <button class="tab-btn active" onclick="switchTab('active-habits-tab', this)">🎯 Active Habits</button>
+            <button class="tab-btn" onclick="switchTab('completed-habits-tab', this)">💾 Completed History</button>
+        </div>
+
+        <nav style="margin-bottom: 30px;">
+            <div id="active-habits-tab" class="tab-content active">
+                <div id="habit-list" class="habit-list-wrapper">
+                    <a href="/atomic_habits" class="habit-card card-atomic">
+                        ✨ Atomic Habits
+                    </a>
+
+                    {% for h in all_habits %}
+                        {% if not h.is_permanently_completed %}
+                        <div class="habit-item" data-id="{{ h.id }}">
+                            <a href="/habit/{{ h.name|urlencode }}"
+                               class="habit-card {% if h.id in completed_today_ids %}card-completed{% else %}card-pending{% endif %}">
+                                {% if h.id in completed_today_ids %}✓ {% endif %}{{ h.name }}
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+
+                    <a href="/manage_library" class="habit-card card-manage">
+                        ⚙️ Manage Library
+                    </a>
+                    <a href="/summary" class="habit-card card-manage">
+                    📋 Summary
+                    </a>
+                </div>
+            </div>
+
+            <div id="completed-habits-tab" class="tab-content">
+                <div class="habit-list-wrapper">
+                    {% for h in all_habits %}
+                        {% if h.is_permanently_completed %}
+                        <div class="habit-item-completed">
+                            <a href="/habit/{{ h.name|urlencode }}" class="habit-card card-completed">
+                                🏆 {{ h.name }} (Done)
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </nav>
+
+        <div class="form-container">
+            <h3>Create New Tracker</h3>
+            <form action="/create_habit" method="POST" class="habit-form">
+                <input type="text" name="name" placeholder="Name (e.g. Reading)" required>
+                <input type="text" name="unit" placeholder="Unit (e.g. mins)" required style="flex: 0 1 100px;">
+                <input type="number" name="goal" placeholder="Daily Goal" required style="flex: 0 1 120px;">
+                <button type="submit">Create Page</button>
+            </form>
+        </div>
+    </div>
+
+  <div id="treemaps-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="{{ url_for('static', filename='js/treemap.js') }}"></script>
+
+<script>
+    // Tab switching engine
+    function switchTab(tabId, buttonElement) {
+        // Hide all tab views
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        // Remove active class from buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab view and light up button
+        document.getElementById(tabId).classList.add('active');
+        buttonElement.classList.add('active');
+    }
+
+    // Drag and Drop ordering setup
+    const el = document.getElementById('habit-list');
+    Sortable.create(el, {
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        onEnd: function () {
+            const habitOrder = Array.from(el.querySelectorAll('.habit-item')).map(item => {
+                return item.getAttribute('data-id');
+            });
+
+            fetch('/update_habit_order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ order: habitOrder })
+            })
+            .then(response => response.json())
+            .then(data => console.log('Order saved:', data))
+            .catch(error => console.error('Error:', error));
+        },
+    });
+</script>
+</body>
+</html>
