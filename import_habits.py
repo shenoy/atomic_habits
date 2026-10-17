@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from flask_app import app, db, Habit, HabitLog, AtomicHabit
+from flask_app import app, db, Habit, HabitLog, AtomicHabit, ensure_schema
 
 with app.app_context():
     # 1. Clear existing (Optional - only if you want a fresh start)
@@ -33,4 +33,5 @@ with app.app_context():
         db.session.add(new_a)
 
     db.session.commit()
+    ensure_schema()  # sorts habits into Activities / Books / Courses
     print("Import Successful! Your data is now in SQLite.")

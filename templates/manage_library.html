@@ -1,42 +1,43 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Manage Library</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0 auto; padding: 20px; max-width: 900px; background-color: #f4f4f9; }
-        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        .btn-edit { color: #fb8c00; text-decoration: none; font-weight: bold; margin-right: 15px; }
-        .btn-delete { color: #ea4335; text-decoration: none; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>📚 Habit Library Management</h2>
-        <a href="/" style="text-decoration: none; color: #1a73e8;">⬅ Back to Dashboard</a>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>Habit Name</th>
-                    <th>Goal/Unit</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for h in all_habits %}
-                <tr>
-                    <td><strong>{{ h.name }}</strong></td>
-                    <td>{{ h.goal }} {{ h.unit }}</td>
-                    <td>
-                        <a href="/edit_habit/{{ h.id }}" class="btn-edit">✎ Edit</a>
-                        <a href="/delete_habit/{{ h.id }}" class="btn-delete" onclick="return confirm('Permanently delete {{ h.name }}?')">✕ Delete</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}Library · Atomic Habits{% endblock %}
+{% block content %}
+<div class="hero" style="padding-bottom:18px">
+  <h1>Library</h1>
+  <p class="muted" style="margin:10px 0 0; max-width:60ch">Every habit in one list. Changing a group here moves the habit to that tab straight away.</p>
+</div>
+<div class="panel" style="padding:0">
+  <div class="table-wrap" style="max-height:none; border:0">
+    <table>
+      <thead><tr><th>Habit</th><th>Group</th><th>Goal</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for h in habits %}
+      <tr>
+        <td><span class="chip" style="--c: {{ h.display_color }}"><i></i></span> <a href="{{ url_for('track_habit', habit_id=h.id) }}" style="font-weight:600; text-decoration:none">{{ h.name }}</a></td>
+        <td style="width:150px">
+          <select class="cat" data-id="{{ h.id }}" aria-label="Group for {{ h.name }}" style="padding:6px 8px">
+            {% for key, label in categories %}<option value="{{ key }}" {{ 'selected' if key == h.category }}>{{ label }}</option>{% endfor %}
+          </select>
+        </td>
+        <td>{% if h.is_delay %}Delay from {{ h.ref_time }}{% else %}{{ h.goal|fmt(h.unit) }}{% endif %}</td>
+        <td class="muted">{{ 'Finished' if h.is_permanently_completed else 'Active' }}</td>
+        <td style="white-space:nowrap">
+          <a class="link-btn" href="{{ url_for('edit_habit', habit_id=h.id) }}">Settings</a>
+          <a class="link-btn danger" href="{{ url_for('delete_habit', habit_id=h.id) }}" onclick='return confirm({{ ("Permanently delete “" ~ h.name ~ "” and all its logs?")|tojson }})'>Delete</a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('select.cat').forEach(s => s.addEventListener('change', async () => {
+  s.disabled = true;
+  const r = await fetch('/set_category/' + s.dataset.id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: s.value }) });
+  s.disabled = false;
+  if (!r.ok) alert('Could not change the group.');
+}));
+</script>
+{% endblock %}

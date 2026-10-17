@@ -1,461 +1,76 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Atomic Habits - System</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #f4f6f9;
-            padding: 40px 20px;
-            max-width: 900px;
-            margin: auto;
-            color: #333;
-        }
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-            margin-bottom: 35px;
-        }
-        h1 { text-align: center; color: #1a73e8; font-weight: 700; margin-bottom: 30px; }
-        h3 { margin-top: 0; border-bottom: 2px solid #f0f2f5; padding-bottom: 12px; color: #202124; font-size: 1.3em; }
-        .formula { color: #5f6368; font-style: italic; margin-bottom: 20px; font-size: 0.95em; }
+{% extends 'base.html' %}
+{% block title %}System · Atomic Habits{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+{% block content %}
+<div class="hero" style="padding-bottom:18px">
+  <h1>Habit system</h1>
+  <p class="muted" style="margin:10px 0 0">The cues that start your habits.</p>
+</div>
 
-        /* Form Styling */
-        .add-form {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
-            background: #f8f9fa;
-            padding: 16px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-            border: 1px solid #eef0f2;
-        }
-        .add-form span { font-weight: 500; color: #5f6368; }
-        input {
-            padding: 10px 14px;
-            border: 1px solid #dadce0;
-            border-radius: 8px;
-            flex: 1;
-            min-width: 140px;
-            font-size: 0.95em;
-            transition: border-color 0.2s;
-        }
-        input:focus { outline: none; border-color: #1a73e8; }
-        button.primary {
-            padding: 10px 24px;
-            background: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-        button.primary:hover { background: #1557b0; }
-
-        /* --- NEW HABIT CARD GRID SYSTEM --- */
-        .habit-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 16px;
-            margin-top: 15px;
-        }
-
-        .habit-item-card {
-            background: #ffffff;
-            border: 1px solid #e0e4ec;
-            border-radius: 12px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-            min-height: 110px;
-        }
-
-        .habit-item-card:hover {
-            transform: translateY(-3px);
-            border-color: #cbd5e1;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
-        }
-
-        /* Order index indicator bubble */
-        .habit-order-badge {
-            position: absolute;
-            top: -10px;
-            left: 15px;
-            background: #f1f3f4;
-            color: #5f6368;
-            font-size: 0.75em;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 20px;
-            border: 1px solid #e0e4ec;
-        }
-
-        /* Styling for the central habit phrase inside the card */
-        .habit-content {
-            font-size: 1rem;
-            line-height: 1.5;
-            color: #3c4043;
-            margin-top: 5px;
-            margin-bottom: 20px;
-        }
-        .habit-content strong {
-            color: #1a73e8;
-            font-weight: 600;
-        }
-
-        /* Action triggers layout inside the card */
-        .habit-actions {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 12px;
-            border-top: 1px solid #f1f3f4;
-            padding-top: 12px;
-        }
-
-        .btn-edit {
-            background: #fff3e0;
-            color: #e65100;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.85em;
-            transition: background 0.2s;
-        }
-        .btn-edit:hover { background: #ffe0b2; }
-
-        .btn-delete {
-            color: #d93025;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 1.1em;
-            padding: 4px 8px;
-            border-radius: 6px;
-            transition: background 0.2s;
-        }
-        .btn-delete:hover { background: #fce8e6; }
-
-        /* Modal Overlay */
-        #modalOverlay { display:none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:1000; backdrop-filter: blur(2px); }
-        #editModal { background: white; padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14); }
-    </style>
-</head>
-<body>
-
-    <nav style="margin-bottom: 20px;">
-        <a href="/" style="text-decoration: none; color: #1a73e8; font-weight: bold; display: inline-flex; align-items: center; gap: 5px;">← Back to Dashboard</a>
-    </nav>
-
-    <h1>Atomic Habits System</h1>
-
-    <div class="card">
-        <h3>Habit Stacking - Pre-Habits</h3>
-        <p class="formula">"Before [Event], I will [New Habit]"</p>
-
-        <form action="/add_atomic" method="POST" class="add-form">
-            <input type="hidden" name="habit_type" value="before">
-            <span>Before</span>
-            <input type="text" name="trigger" placeholder="Event (e.g. Breakfast)" required>
-            <span>, I will</span>
-            <input type="text" name="action" placeholder="New Habit" required>
-            <button type="submit" class="primary">Add Before</button>
-        </form>
-
-        <div class="habit-grid">
-            {% for h in before_habits %}
-            <div class="habit-item-card">
-                <div class="habit-order-badge">#{{ h.order_index }}</div>
-                <div class="habit-content">
-                    Before <strong>{{ h.trigger_or_time }}</strong>, I will <strong>{{ h.action }}</strong>.
-                </div>
-                <div class="habit-actions">
-                    <button class="btn-edit" onclick="showEditForm('{{ h.id }}', '{{ h.trigger_or_time }}', '{{ h.action }}', '{{ h.order_index }}')">✎ Edit</button>
-                    <a href="/delete_atomic/{{ h.id }}" class="btn-delete">✕</a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
+{% macro section(title, formula, kind, items, lead, mid, trigger_ph, action_ph, button) %}
+<section class="panel">
+  <h2>{{ title }}</h2>
+  <p class="formula">{{ formula }}</p>
+  <form action="{{ url_for('add_atomic') }}" method="post" class="inline-form">
+    <input type="hidden" name="habit_type" value="{{ kind }}">
+    {% if kind == 'standard' %}
+      <span>I will</span><input type="text" name="action" placeholder="{{ action_ph }}" required>
+      <span>at</span><input type="text" name="trigger" placeholder="{{ trigger_ph }}" required>
+    {% else %}
+      <span>{{ lead }}</span><input type="text" name="trigger" placeholder="{{ trigger_ph }}" required>
+      <span>, I will</span><input type="text" name="action" placeholder="{{ action_ph }}" required>
+    {% endif %}
+    <button class="btn primary" type="submit">{{ button }}</button>
+  </form>
+  <div class="stack-grid">
+    {% for h in items %}
+    <div class="atom">
+      <div>
+        {% if kind == 'standard' %}I will <strong>{{ h.action }}</strong> at <strong>{{ h.trigger_or_time }}</strong>.
+        {% else %}{{ lead }} <strong>{{ h.trigger_or_time }}</strong>, I will <strong>{{ h.action }}</strong>.{% endif %}
+      </div>
+      <div class="acts">
+        <span class="muted">#{{ h.order_index }}</span>
+        <span>
+          <button class="link-btn" style="background:none;border:0;cursor:pointer;font-family:inherit" type="button"
+                  data-edit='{{ {"id": h.id, "trigger": h.trigger_or_time, "action": h.action, "order": h.order_index}|tojson }}'>Edit</button>
+          <a class="link-btn danger" href="{{ url_for('delete_atomic', id=h.id) }}" onclick="return confirm('Delete this habit?')">Delete</a>
+        </span>
+      </div>
     </div>
+    {% endfor %}
+  </div>
+</section>
+{% endmacro %}
 
-    <div class="card">
-        <h3>Habit Stacking - Post-Habits</h3>
-        <p class="formula">"After [Current Habit], I will [New Habit]"</p>
+{{ section('Before an event', '“Before [event], I will [new habit].”', 'before', before_habits, 'Before', '', 'Event (e.g. Breakfast)', 'New habit', 'Add') }}
+{{ section('After a habit', '“After [current habit], I will [new habit].”', 'stack', stacks, 'After', '', 'Current habit', 'New habit', 'Add') }}
+{{ section('At a set time', '“I will [behavior] at [time].”', 'standard', standards, '', '', 'Time', 'Behavior', 'Add') }}
 
-        <form action="/add_atomic" method="POST" class="add-form">
-            <input type="hidden" name="habit_type" value="stack">
-            <span>After</span>
-            <input type="text" name="trigger" placeholder="Current Habit" required>
-            <span>, I will</span>
-            <input type="text" name="action" placeholder="New Habit" required>
-            <button type="submit" class="primary">Add Stack</button>
-        </form>
-
-        <div class="habit-grid">
-            {% for h in stacks %}
-            <div class="habit-item-card">
-                <div class="habit-order-badge">#{{ h.order_index }}</div>
-                <div class="habit-content">
-                    After <strong>{{ h.trigger_or_time }}</strong>, I will <strong>{{ h.action }}</strong>.
-                </div>
-                <div class="habit-actions">
-                    <button class="btn-edit" onclick="showEditForm('{{ h.id }}', '{{ h.trigger_or_time }}', '{{ h.action }}', '{{ h.order_index }}')">✎ Edit</button>
-                    <a href="/delete_atomic/{{ h.id }}" class="btn-delete">✕</a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
+<dialog id="edit-dialog">
+  <form id="edit-form" method="post">
+    <h2>Edit habit</h2>
+    <label class="field">Order<input type="number" name="order" id="e-order"></label>
+    <label class="field">Trigger or time<input type="text" name="trigger" id="e-trigger" required></label>
+    <label class="field">Behavior<input type="text" name="action" id="e-action" required></label>
+    <div class="actions">
+      <button class="btn" type="button" id="e-cancel">Cancel</button>
+      <button class="btn primary" type="submit">Save changes</button>
     </div>
-
-    <div class="card">
-        <h3>Standard Habits</h3>
-        <p class="formula">"I will [Behavior] at [Time]"</p>
-
-        <form action="/add_atomic" method="POST" class="add-form">
-            <input type="hidden" name="habit_type" value="standard">
-            <span>I will</span>
-            <input type="text" name="action" placeholder="Behavior" required>
-            <span>at</span>
-            <input type="text" name="trigger" placeholder="Time" required>
-            <button type="submit" class="primary">Add Standard</button>
-        </form>
-
-        <div class="habit-grid">
-            {% for h in standards %}
-            <div class="habit-item-card">
-                <div class="habit-order-badge">#{{ h.order_index }}</div>
-                <div class="habit-content">
-                    I will <strong>{{ h.action }}</strong> at <strong>{{ h.trigger_or_time }}</strong>.
-                </div>
-                <div class="habit-actions">
-                    <button class="btn-edit" onclick="showEditForm('{{ h.id }}', '{{ h.trigger_or_time }}', '{{ h.action }}', '{{ h.order_index }}')">✎ Edit</button>
-                    <a href="/delete_atomic/{{ h.id }}" class="btn-delete" onclick="return confirm('Delete?')">✕</a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div id="modalOverlay">
-        <div id="editModal">
-            <h3 style="border:none; margin-bottom:15px;">Edit Atomic Habit</h3>
-            <form id="editForm" method="POST">
-                <label style="font-weight:600; color:#5f6368; font-size:0.9em;">Order Index:</label><br>
-                <input type="number" name="order" id="editOrder" style="width:100%; box-sizing:border-box; margin: 6px 0 16px 0;"><br>
-
-                <label style="font-weight:600; color:#5f6368; font-size:0.9em;">Trigger / Time:</label><br>
-                <input type="text" name="trigger" id="editTrigger" style="width:100%; box-sizing:border-box; margin: 6px 0 16px 0;"><br>
-
-                <label style="font-weight:600; color:#5f6368; font-size:0.9em;">Action / Behavior:</label><br>
-                <input type="text" name="action" id="editAction" style="width:100%; box-sizing:border-box; margin: 6px 0 24px 0;"><br>
-
-                <div style="display:flex; gap:12px;">
-                    <button type="submit" class="primary" style="flex:1;">Save Change</button>
-                    <button type="button" onclick="closeModal()" style="flex:1; background:#e8eaed; color:#3c4043; border:none; border-radius:8px; cursor:pointer; font-weight:600;">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        function showEditForm(id, trigger, action, order) {
-            document.getElementById('editForm').action = '/edit_atomic/' + id;
-            document.getElementById('editTrigger').value = trigger;
-            document.getElementById('editAction').value = action;
-            document.getElementById('editOrder').value = order;
-            document.getElementById('modalOverlay').style.display = 'block';
-        }
-
-        function closeModal() {
-            document.getElementById('modalOverlay').style.display = 'none';
-        }
-
-        window.onclick = function(event) {
-            if (event.target == document.getElementById('modalOverlay')) {
-                closeModal();
-            }
-        }
-    </script>
-</body>
-</html>
-
-<!--<!DOCTYPE html>-->
-<!--<html>-->
-<!--<head>-->
-<!--    <title>Atomic Habits - System</title>-->
-<!--    <style>-->
-<!--        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f9; padding: 20px; max-width: 850px; margin: auto; color: #333; }-->
-<!--        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 25px; }-->
-<!--        h1 { text-align: center; color: #1a73e8; }-->
-<!--        h3 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }-->
-
-        /* Form Styling */
-<!--        .add-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; }-->
-<!--        input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; flex: 1; min-width: 120px; }-->
-<!--        button.primary { padding: 10px 20px; background: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }-->
-
-        /* Table Styling */
-<!--        table { width: 100%; border-collapse: collapse; margin-top: 10px; }-->
-<!--        th { text-align: left; color: #666; font-size: 0.85em; text-transform: uppercase; padding: 10px; }-->
-<!--        td { padding: 12px 10px; border-top: 1px solid #eee; }-->
-
-        /* Modal Overlay */
-<!--        #modalOverlay { display:none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; }-->
-<!--        #editModal { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }-->
-<!--    </style>-->
-<!--</head>-->
-<!--<body>-->
-
-<!--    <nav style="margin-bottom: 20px;">-->
-<!--        <a href="/" style="text-decoration: none; color: #1a73e8; font-weight: bold;">← Back to Dashboard</a>-->
-<!--    </nav>-->
-
-<!--    <h1>Atomic Habits System</h1>-->
-<!--    <div class="card">-->
-<!--        <h3>Habit Stacking - Pre-Habits</h3>-->
-<!--        <p class="formula">"Before [Event], I will [New Habit]"</p>-->
-
-<!--        <form action="/add_atomic" method="POST" class="add-form">-->
-<!--            <input type="hidden" name="habit_type" value="before">-->
-<!--            <span>Before</span>-->
-<!--            <input type="text" name="trigger" placeholder="Event (e.g. Breakfast)" required>-->
-<!--            <span>, I will</span>-->
-<!--            <input type="text" name="action" placeholder="New Habit" required>-->
-<!--            <button type="submit" class="primary">Add Before</button>-->
-<!--        </form>-->
-
-<!--        <table>-->
-<!--            <thead>-->
-<!--                <tr><th style="width:50px;">Order</th><th>Habit</th><th style="text-align:right;">Actions</th></tr>-->
-<!--            </thead>-->
-<!--            <tbody>-->
-<!--                {% for h in before_habits %}-->
-<!--                <tr>-->
-<!--                    <td><strong>{{ h.order_index }}</strong></td>-->
-<!--                    <td>Before <strong>{{ h.trigger_or_time }}</strong>, I will <strong>{{ h.action }}</strong>.</td>-->
-<!--                    <td style="text-align: right;">-->
-<!--                        <button onclick="showEditForm('{{ h.id }}', '{{ h.trigger_or_time }}', '{{ h.action }}', '{{ h.order_index }}')" style="background: #fb8c00; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer;">✎ Edit</button>-->
-<!--                        <a href="/delete_atomic/{{ h.id }}" style="color: #ea4335; text-decoration: none; margin-left: 10px; font-weight: bold;">✕</a>-->
-<!--                    </td>-->
-<!--                </tr>-->
-<!--                {% endfor %}-->
-<!--            </tbody>-->
-<!--        </table>-->
-<!--    </div>-->
-
-<!--    <div class="card">-->
-<!--        <h3>Habit Stacking - Post-Habits</h3>-->
-<!--        <p class="formula">"After [Current Habit], I will [New Habit]"</p>-->
-
-<!--        <form action="/add_atomic" method="POST" class="add-form">-->
-<!--            <input type="hidden" name="habit_type" value="stack">-->
-<!--            <span>After</span>-->
-<!--            <input type="text" name="trigger" placeholder="Current Habit" required>-->
-<!--            <span>, I will</span>-->
-<!--            <input type="text" name="action" placeholder="New Habit" required>-->
-<!--            <button type="submit" class="primary">Add Stack</button>-->
-<!--        </form>-->
-
-<!--        <table>-->
-<!--            <thead>-->
-<!--                <tr><th style="width:50px;">Order</th><th>Habit Stack</th><th style="text-align:right;">Actions</th></tr>-->
-<!--            </thead>-->
-<!--            <tbody>-->
-<!--                {% for h in stacks %}-->
-<!--                <tr>-->
-<!--                    <td><strong>{{ h.order_index }}</strong></td>-->
-<!--                    <td>After <strong>{{ h.trigger_or_time }}</strong>, I will <strong>{{ h.action }}</strong>.</td>-->
-<!--                    <td style="text-align: right;">-->
-<!--                        <button onclick="showEditForm('{{ h.id }}', '{{ h.trigger_or_time }}', '{{ h.action }}', '{{ h.order_index }}')" style="background: #fb8c00; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer;">✎ Edit</button>-->
-<!--                        <a href="/delete_atomic/{{ h.id }}" style="color: #ea4335; text-decoration: none; margin-left: 10px; font-weight: bold;">✕</a>-->
-<!--                    </td>-->
-<!--                </tr>-->
-<!--                {% endfor %}-->
-<!--            </tbody>-->
-<!--        </table>-->
-<!--    </div>-->
-
-
-<!--    <div class="card">-->
-<!--        <h3>Standard Habits</h3>-->
-<!--        <p class="formula">"I will [Behavior] at [Time]"</p>-->
-
-<!--        <form action="/add_atomic" method="POST" class="add-form">-->
-<!--            <input type="hidden" name="habit_type" value="standard">-->
-<!--            <span>I will</span>-->
-<!--            <input type="text" name="action" placeholder="Behavior" required>-->
-<!--            <span>at</span>-->
-<!--            <input type="text" name="trigger" placeholder="Time" required>-->
-<!--            <button type="submit" class="primary">Add Standard</button>-->
-<!--        </form>-->
-
-<!--        <table>-->
-<!--            <thead>-->
-<!--                <tr><th style="width:50px;">Order</th><th>Standard Habit</th><th style="text-align:right;">Actions</th></tr>-->
-<!--            </thead>-->
-<!--            <tbody>-->
-<!--                {% for h in standards %}-->
-<!--                <tr>-->
-<!--                    <td><strong>{{ h.order_index }}</strong></td>-->
-<!--                    <td>I will <strong>{{ h.action }}</strong> at <strong>{{ h.trigger_or_time }}</strong>.</td>-->
-<!--                    <td style="text-align: right;">-->
-<!--                        <button onclick="showEditForm('{{ h.id }}', '{{ h.trigger_or_time }}', '{{ h.action }}', '{{ h.order_index }}')" style="background: #fb8c00; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer;">✎ Edit</button>-->
-<!--                        <a href="/delete_atomic/{{ h.id }}" style="color: #ea4335; text-decoration: none; margin-left: 10px; font-weight: bold;" onclick="return confirm('Delete?')">✕</a>-->
-<!--                    </td>-->
-<!--                </tr>-->
-<!--                {% endfor %}-->
-<!--            </tbody>-->
-<!--        </table>-->
-<!--    </div>-->
-
-<!--    <div id="modalOverlay">-->
-<!--        <div id="editModal">-->
-<!--            <h3>Edit Atomic Habit</h3>-->
-<!--            <form id="editForm" method="POST">-->
-<!--                <label>Order Index:</label><br>-->
-<!--                <input type="number" name="order" id="editOrder" style="width:100%; margin: 10px 0;"><br>-->
-<!--                <label>Trigger / Time:</label><br>-->
-<!--                <input type="text" name="trigger" id="editTrigger" style="width:100%; margin: 10px 0;"><br>-->
-<!--                <label>Action / Behavior:</label><br>-->
-<!--                <input type="text" name="action" id="editAction" style="width:100%; margin: 10px 0 20px 0;"><br>-->
-
-<!--                <div style="display:flex; gap:10px;">-->
-<!--                    <button type="submit" class="primary" style="flex:1;">Save</button>-->
-<!--                    <button type="button" onclick="closeModal()" style="flex:1; background:#eee; border:none; border-radius:6px; cursor:pointer;">Cancel</button>-->
-<!--                </div>-->
-<!--            </form>-->
-<!--        </div>-->
-<!--    </div>-->
-
-<!--    <script>-->
-<!--        function showEditForm(id, trigger, action, order) {-->
-<!--            document.getElementById('editForm').action = '/edit_atomic/' + id;-->
-<!--            document.getElementById('editTrigger').value = trigger;-->
-<!--            document.getElementById('editAction').value = action;-->
-<!--            document.getElementById('editOrder').value = order;-->
-<!--            document.getElementById('modalOverlay').style.display = 'block';-->
-<!--        }-->
-
-<!--        function closeModal() {-->
-<!--            document.getElementById('modalOverlay').style.display = 'none';-->
-<!--        }-->
-
-        // Close modal if user clicks outside the box
-<!--        window.onclick = function(event) {-->
-<!--            if (event.target == document.getElementById('modalOverlay')) {-->
-<!--                closeModal();-->
-<!--            }-->
-<!--        }-->
-<!--    </script>-->
-<!--</body>-->
-<!--</html>-->
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script>
+const dlg = document.getElementById('edit-dialog');
+document.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {
+  const d = JSON.parse(b.dataset.edit);
+  document.getElementById('edit-form').action = '/edit_atomic/' + d.id;
+  document.getElementById('e-trigger').value = d.trigger;
+  document.getElementById('e-action').value = d.action;
+  document.getElementById('e-order').value = d.order;
+  dlg.showModal();
+}));
+document.getElementById('e-cancel').addEventListener('click', () => dlg.close());
+</script>
+{% endblock %}

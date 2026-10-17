@@ -1,122 +1,131 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ habit.name }} Tracker</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
-        .container { background: white; padding: 20px; border-radius: 12px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        input { padding: 10px; width: 70%; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        button { padding: 10px 20px; background: #1a73e8; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #1557b0; }
-
-        /* Archive module style card */
-        .archive-card {
-            background: #e8f0fe;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #cbdcf7;
-            margin: 25px 0;
-            text-align: left;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <a href="/" style="text-decoration: none; color: #1a73e8; font-weight: bold;">← Home</a>
-        <h1>{{ habit.name }} Tracker</h1>
-        <p>Goal: <strong>{{ habit.goal }} {{ habit.unit }}</strong> per day.</p>
-
-        <div style="background: #e8f0fe; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0;">
-            <h2 style="margin:0;">Total Today: {{ total }} {{ habit.unit }}</h2>
-            <progress value="{{ total }}" max="{{ habit.goal }}" style="width: 100%; height: 20px; margin-top: 10px;"></progress>
-        </div>
-
-          <form method="POST" style="margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start;">
-            <!-- FIX: Swapped input type="textarea" for a proper textarea element -->
-            <textarea name="activity" placeholder="Item (e.g. Book Name / Exercise)" required style="width: 60%; height: 40px; box-sizing: border-box; resize: vertical;"></textarea>
-            <input type="number" name="value" placeholder="{{ habit.unit }}" required style="width: 25%; height: 40px; box-sizing: border-box;">
-            <button type="submit" style="height: 40px;">Log</button>
-        </form>
-
-        <div class="archive-card">
-            <h3 style="margin-top: 0; color: #1a73e8; display: flex; align-items: center; gap: 6px;">🏆 Finish this Tracker?</h3>
-            <p style="color: #5f6368; font-size: 0.9em; margin-bottom: 15px; line-height: 1.4;">
-                Finished your book or reached your structural milestones? Moving this will cleanly archive it from your active daily dashboard loops into your <strong>Completed History</strong> space.
-            </p>
-            <form action="/complete_habit_permanently/{{ habit.id }}" method="POST" onsubmit="return confirm('Are you sure you want to move &ldquo;{{ habit.name }}&rdquo; to the Completed History Tab?');">
-                <button type="submit" style="background: #1a73e8; border-radius: 6px; padding: 10px 18px;">
-                    Move to Completed Tab
-                </button>
-            </form>
-        </div>
-
-        <hr>
-        <h3>Today's Details:</h3>
-        <ul>
-        {% for log in today_logs %}
-            <li style="margin-bottom: 8px;">
-                <span style="color: #666; font-size: 0.9em;">[{{ log.time_created }}]</span>
-                <!-- This forces HTML to respect and render the line breaks naturally -->
-                <strong style="white-space: pre-line;">{{ log.activity_name }}</strong>: {{ log.value }} {{ habit.unit }}
-                <a href="{{ url_for('edit_habit_log', log_id=log.id) }}" style="margin-left: 10px; color: #1a73e8; text-decoration: none;">[Edit]</a>
-                <a href="{{ url_for('delete_habit_log', log_id=log.id) }}" style="color: red; text-decoration: none;">[x]</a>
-            </li>
-        {% else %}
-            <li>No entries for today yet.</li>
-        {% endfor %}
-        </ul>
-
-        <hr>
-        <h3>Historical Data</h3>
-        <canvas id="habitChart" width="400" height="200"></canvas>
-
-        <h3>Full Historical Logs</h3>
-        <div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px;">
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="border-bottom: 2px solid #ddd; text-align: left;">
-                        <th>Date / Time</th>
-                        <th>Item</th>
-                        <th>Value</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for log in all_logs %}
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 8px 0;">{{ log.date_created.strftime('%Y-%m-%d') }}<small style="color: #888;">({{ log.time_created }})</small></td>
-                    <td>{{ log.activity_name }}</td>
-                    <td>{{ log.value }} {{ habit.unit }}</td>
-                    <td>
-                        <a href="{{ url_for('edit_habit_log', log_id=log.id) }}" style="color: #1a73e8; text-decoration: none; margin-right: 10px;">[Edit]</a>
-                        <a href="{{ url_for('delete_habit_log', log_id=log.id) }}" style="color: red; text-decoration: none;">[x]</a>
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
+{% extends 'base.html' %}
+{% block title %}{{ habit.name }} · Atomic Habits{% endblock %}
+{% block content %}
+{% set u = habit.unit|trim|lower %}
+{% set hint = '1.5 or 1:30' if u.startswith('h') else ('25 or 1:30' if u.startswith('min') else '') %}
+<a class="crumb" href="{{ url_for('index', tab=tab) }}">← {{ {'activities':'Activities','books':'Books','courses':'Courses'}[tab] }}</a>
+<div class="head-row" style="--c: {{ habit.display_color }}">
+  <div>
+    <h1>{{ habit.name }}</h1>
+    <div class="hero-meta" style="margin-top:10px">
+      <span class="chip"><i></i>{% if habit.is_delay %}Delay from {{ habit.ref_time }}{% else %}Goal {{ habit.goal|fmt(habit.unit) }} a day{% endif %}</span>
+      {% if habit.is_permanently_completed %}<span class="chip">Finished</span>{% endif %}
     </div>
+  </div>
+  <div style="display:flex; gap:8px; flex-wrap:wrap">
+    <a class="btn" href="{{ url_for('edit_habit', habit_id=habit.id) }}">Settings &amp; colours</a>
+    {% if habit.is_permanently_completed %}
+      <form action="{{ url_for('reopen_habit', habit_id=habit.id) }}" method="post"><button class="btn" type="submit">Reopen</button></form>
+    {% else %}
+      <form action="{{ url_for('complete_habit_permanently', habit_id=habit.id) }}" method="post" onsubmit='return confirm({{ ("Move “" ~ habit.name ~ "” to Finished? You can reopen it later.")|tojson }})'><button class="btn" type="submit">Mark finished</button></form>
+    {% endif %}
+  </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        const ctx = document.getElementById('habitChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: {{ labels|tojson }},
-                datasets: [{
-                    label: '{{ habit.unit }} recorded',
-                    data: {{ values|tojson }},
-                    backgroundColor: 'rgba(26, 115, 232, 0.6)',
-                    borderColor: '#1a73e8',
-                    borderWidth: 1
-                }]
-            },
-            options: { scales: { y: { beginAtZero: true } } }
-        });
-    </script>
-</body>
-</html>
+<div class="stats">
+  <div class="stat"><b>{{ state.text if state.value is not none else '—' }}</b><span>Today</span></div>
+  <div class="stat"><b>{{ streak }}</b><span>Day streak</span></div>
+  <div class="stat"><b>{{ best }}</b><span>Best streak</span></div>
+  <div class="stat"><b>{{ active_days }}</b><span>Days logged</span></div>
+  {% if habit.is_delay %}
+  <div class="stat"><b>{{ avg|round|int|fmt(habit.unit, 'delay') }}</b><span>Average delay</span></div>
+  {% else %}
+  <div class="stat"><b>{{ total|fmt(habit.unit) }}</b><span>Total</span></div>
+  <div class="stat"><b>{{ avg|fmt(habit.unit) }}</b><span>Per logged day</span></div>
+  {% endif %}
+</div>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Activity</h2>
+    <select id="year-select" aria-label="Period">
+      <option value="rolling">Since first log</option>
+      {% for y in years %}<option value="{{ y }}">{{ y }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="heat-scroll"><div id="heat" data-heat-host></div></div>
+  <div class="heat-legend" id="legend"></div>
+</section>
+
+<section class="panel">
+  <h2 style="margin-bottom:14px">{{ 'Log today’s time' if habit.is_delay else 'Add a log' }}</h2>
+  <form method="post" class="row">
+    {% if habit.is_delay %}
+      <label class="field">Time<small>Counted against {{ habit.ref_time }}</small><input type="time" name="time" id="log-time" required></label>
+    {% else %}
+      <label class="field">Amount ({{ habit.unit|trim }})<input name="value" inputmode="decimal" autocomplete="off" required placeholder="{{ hint }}"></label>
+    {% endif %}
+    <label class="field" style="flex: 2 1 220px">Note <small>optional</small><input name="activity" maxlength="100" placeholder="{{ 'Chapter, topic, what you did' }}"></label>
+    <label class="field">Date<input type="date" name="date" value="{{ today }}" max="{{ today }}"></label>
+    <div class="fixed"><button class="btn primary" type="submit">Log</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2 style="margin-bottom:14px">Last 60 days</h2>
+  <div class="canvas-box"><canvas id="habitChart" aria-label="Daily values for the last 60 days" role="img"></canvas></div>
+</section>
+
+<section class="panel">
+  <h2 style="margin-bottom:14px">History</h2>
+  {% if all_logs %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>When</th><th>Note</th><th>{{ 'Delay' if habit.is_delay else 'Amount' }}</th><th></th></tr></thead>
+      <tbody>
+      {% for log in all_logs %}
+        <tr>
+          <td>{{ log.date_created.strftime('%a %d %b %Y') }}<span class="sub">{{ log.time_created }}</span></td>
+          <td class="pre">{{ log.activity_name if log.activity_name.strip() != habit.name.strip() else '' }}</td>
+          <td>{{ log.value|fmt(habit.unit, habit.metric) }}</td>
+          <td style="white-space:nowrap">
+            <a class="link-btn" href="{{ url_for('edit_habit_log', log_id=log.id) }}">Edit</a>
+            <a class="link-btn danger" href="{{ url_for('delete_habit_log', log_id=log.id) }}" onclick="return confirm('Delete this entry?')">Delete</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty">Nothing logged yet. Add your first entry above.</p>{% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+const HEAT = {{ heat|tojson }}, CHART = {{ chart|tojson }}, FIRST = {{ first|tojson }};
+const host = document.getElementById('heat'), sel = document.getElementById('year-select');
+function draw() {
+  const o = { data: HEAT.data, cfg: HEAT.cfg, cell: 13, gap: 3, minWidth: 640, maxScale: 3 };
+  if (sel.value === 'rolling') { o.weeks = 'auto'; o.first = FIRST; } else o.year = +sel.value;
+  Heat.render(host, o);
+  Heat.legend(document.getElementById('legend'), HEAT.cfg);
+  host.parentElement.scrollLeft = host.parentElement.scrollWidth;
+}
+sel.addEventListener('change', draw); document.addEventListener('themechange', () => { draw(); chart(); });
+draw();
+
+const lt = document.getElementById('log-time');
+if (lt) { const d = new Date(); lt.value = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+
+let ch;
+function chart() {
+  if (!window.Chart) return;
+  const css = getComputedStyle(document.documentElement), muted = css.getPropertyValue('--muted').trim(), line = css.getPropertyValue('--line').trim();
+  const c = HEAT.cfg.color, delay = HEAT.cfg.metric === 'delay';
+  if (ch) ch.destroy();
+  ch = new Chart(document.getElementById('habitChart'), {
+    type: 'bar',
+    data: { labels: CHART.labels, datasets: [{ data: CHART.values, backgroundColor: ctx => (delay && ctx.raw <= 0) ? muted : c, borderRadius: 3, maxBarThickness: 18 }] },
+    options: {
+      maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: x => Heat.fmt(x.raw, HEAT.cfg) } } },
+      scales: { x: { ticks: { color: muted, maxTicksLimit: 8, autoSkip: true }, grid: { display: false } },
+                y: { beginAtZero: true, ticks: { color: muted }, grid: { color: line }, title: { display: delay, text: 'minutes late (below 0 = early)', color: muted } } }
+    }
+  });
+}
+chart();
+</script>
+{% endblock %}

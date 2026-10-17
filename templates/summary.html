@@ -1,146 +1,33 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Summary - Atomic Habits</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0 auto;
-        padding: 40px 20px;
-        max-width: 900px;
-        background-color: #f4f4f9;
-    }
-    .container {
-        background: white;
-        padding: 30px;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    }
-    .back-link {
-        display: inline-block;
-        margin-bottom: 20px;
-        color: #5f6368;
-        text-decoration: none;
-        font-weight: bold;
-    }
-    .back-link:hover { color: #1a73e8; }
+{% extends 'base.html' %}
+{% block title %}Summary · Atomic Habits{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+{% block content %}
+<div class="hero" style="padding-bottom:18px">
+  <h1>Summary</h1>
+  <p class="muted" style="margin:10px 0 0">{{ selected_date.strftime('%A %d %B %Y') }}</p>
+</div>
+<form action="{{ url_for('summary') }}" method="get" class="row" style="margin-bottom:22px">
+  <div class="fixed"><a class="btn" href="{{ url_for('summary', date=prev_day) }}" aria-label="Previous day">←</a></div>
+  <input type="date" name="date" required value="{{ selected_date.strftime('%Y-%m-%d') }}" onchange="this.form.submit()" style="max-width:200px; flex: 0 1 200px" aria-label="Date">
+  <div class="fixed"><a class="btn" href="{{ url_for('summary', date=next_day) }}" aria-label="Next day">→</a></div>
+  {% if not is_today %}<div class="fixed"><a class="btn" href="{{ url_for('summary') }}">Today</a></div>{% endif %}
+</form>
 
-    .form-container {
-        margin-bottom: 30px;
-        padding: 25px;
-        background: #fff3e0;
-        border-radius: 12px;
-        border: 1px solid #ffe0b2;
-    }
-    .form-container h3 { margin-top: 0; margin-bottom: 15px; color: #e65100; }
-    .summary-form { display: flex; gap: 10px; flex-wrap: wrap; }
-    .summary-form input {
-        padding: 10px 14px;
-        border: 1px solid #dadce0;
-        border-radius: 8px;
-        font-size: 14px;
-    }
-    .summary-form button {
-        padding: 10px 20px;
-        background: #fb8c00;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-    .summary-form button:hover { background: #e65100; }
-
-    .habit-block {
-        margin-bottom: 25px;
-        padding: 20px;
-        border: 1px solid #eef0f2;
-        border-radius: 12px;
-    }
-    .habit-block h4 {
-        margin-top: 0;
-        color: #1a73e8;
-    }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-    }
-    th, td {
-        text-align: left;
-        padding: 8px 12px;
-        border-bottom: 1px solid #eef0f2;
-    }
-    th {
-        color: #5f6368;
-        font-size: 13px;
-        text-transform: uppercase;
-    }
-    .total-line {
-        margin-top: 10px;
-        font-weight: bold;
-        color: #34a853;
-    }
-    .empty-msg {
-        color: #5f6368;
-        font-style: italic;
-    }
-
-    @media (max-width: 600px) {
-        body { padding: 10px; max-width: 100%; }
-        .container { padding: 20px 15px; border-radius: 12px; }
-        .summary-form { flex-direction: column; }
-        .summary-form input { width: 100%; box-sizing: border-box; }
-    }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <a href="/" class="back-link">← Back</a>
-        <h2>Summary</h2>
-
-        <div class="form-container">
-            <h3>Choose a date</h3>
-            <form action="/summary" method="GET" class="summary-form">
-                <input type="date" name="date" required
-                    value="{{ selected_date.strftime('%Y-%m-%d') if selected_date else '' }}">
-                <button type="submit">View</button>
-            </form>
-        </div>
-
-        {% if selected_date %}
-            <h3>{{ selected_date.strftime('%d %b %Y') }}</h3>
-
-            {% if habit_entries %}
-                {% for entry in habit_entries %}
-                <div class="habit-block">
-                    <h4>{{ entry.habit.name }}</h4>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Activity</th>
-                                <th>Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for log in entry.logs %}
-                            <tr>
-                                <td>{{ log.time_created }}</td>
-                                <td>{{ log.activity_name }}</td>
-                                <td>{{ log.value }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    <p class="total-line">Total: {{ entry.total }} {{ entry.habit.unit }}</p>
-                </div>
-                {% endfor %}
-            {% else %}
-                <p class="empty-msg">No entries logged for this date.</p>
-            {% endif %}
-        {% endif %}
-    </div>
-</body>
-</html>
+{% for entry in habit_entries %}
+<section class="panel" style="--c: {{ entry.habit.display_color }}; border-top: 3px solid var(--c)">
+  <div class="panel-head">
+    <h3><a href="{{ url_for('track_habit', habit_id=entry.habit.id) }}" style="text-decoration:none">{{ entry.habit.name }}</a></h3>
+    <b>{{ entry.total|fmt(entry.habit.unit, entry.habit.metric) }}</b>
+  </div>
+  <table>
+    <tbody>
+    {% for log in entry.logs %}
+      <tr><td style="width:70px" class="muted">{{ log.time_created }}</td><td class="pre">{{ log.activity_name if log.activity_name.strip() != entry.habit.name.strip() else '' }}</td><td style="text-align:right">{{ log.value|fmt(entry.habit.unit, entry.habit.metric) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<p class="empty panel">Nothing was logged on this day.</p>
+{% endfor %}
+{% endblock %}

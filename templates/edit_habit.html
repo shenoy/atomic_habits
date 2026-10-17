@@ -1,31 +1,109 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Edit Tracker</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0 auto; padding: 20px; max-width: 900px; background-color: #f4f4f9; }
-        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        input { padding: 10px; margin: 10px 0; width: 100%; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
-        button { padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 8px; width: 100%; cursor: pointer; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Edit Tracker: {{ habit.name }}</h2>
-        <form method="POST">
-            <label>Tracker Name:</label>
-            <input type="text" name="name" value="{{ habit.name }}" required>
-            
-            <label>Daily Goal:</label>
-            <input type="number" name="goal" value="{{ habit.goal }}" required>
-            
-            <label>Unit (e.g., mins, pages):</label>
-            <input type="text" name="unit" value="{{ habit.unit }}" required>
-            
-            <button type="submit">Save Changes</button>
-        </form>
-        <br>
-        <a href="/" style="text-decoration: none; color: #666;">⬅ Cancel and Go Back</a>
+{% extends 'base.html' %}
+{% block title %}Settings · {{ habit.name }}{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+{% block content %}
+<a class="crumb" href="{{ url_for('track_habit', habit_id=habit.id) }}">← {{ habit.name }}</a>
+<h1 style="margin-bottom:22px">Settings</h1>
+
+<form method="post" id="settings">
+  <section class="panel">
+    <h2 style="margin-bottom:16px">Habit</h2>
+    <div style="display:grid; gap:14px">
+      <label class="field">Name<input name="name" id="f-name" value="{{ habit.name }}" required maxlength="100"></label>
+      <div class="row">
+        <label class="field">Group
+          <select name="category" id="f-category">{% for key, label in categories %}<option value="{{ key }}" {{ 'selected' if key == habit.category }}>{{ label }}</option>{% endfor %}</select>
+        </label>
+        <label class="field">Unit
+          <input name="unit" id="f-unit" list="units" value="{{ habit.unit|trim }}" required>
+          <datalist id="units"><option value="min"><option value="hours"><option value="pages"><option value="count"></datalist>
+        </label>
+        <label class="field">Daily goal<input name="goal" type="number" step="any" min="0" value="{{ habit.goal|num }}" required></label>
+      </div>
+      <label style="display:flex;gap:10px;align-items:flex-start;font-weight:500">
+        <input type="checkbox" name="metric" value="delay" id="f-delay" {{ 'checked' if habit.is_delay }} style="margin-top:4px">
+        <span>Track delay from a set time<br><small class="muted">For waking up or going to bed: you log the actual time and the app counts minutes late. Drawn in red unless you pick another colour.</small></span>
+      </label>
+      <label class="field" id="ref-field" style="max-width:200px">Reference time<input type="time" name="ref_time" value="{{ habit.ref_time or '05:00' }}"></label>
     </div>
-</body>
-</html>
+  </section>
+
+  <section class="panel">
+    <h2 style="margin-bottom:4px">Heat-map</h2>
+    <p class="hint" style="margin:0 0 16px">Preview uses your real history for this habit.</p>
+    <div class="heat-scroll"><div id="preview" data-heat-host></div></div>
+    <div class="heat-legend" id="legend"></div>
+
+    <div style="display:grid; gap:18px; margin-top:20px">
+      <div>
+        <div class="field" style="margin-bottom:8px">Colour</div>
+        <div class="swatches" id="swatches">
+          {% for s in swatches %}<button type="button" style="--s: {{ s }}" data-c="{{ s }}" aria-label="Use {{ s }}" aria-pressed="false"></button>{% endfor %}
+          <input type="color" id="f-color-pick" aria-label="Pick any colour">
+          <button type="button" class="btn sm" id="color-default">Use default</button>
+        </div>
+        <input type="hidden" name="color" id="f-color" value="{{ habit.color or '' }}">
+      </div>
+
+      <div class="seg" role="radiogroup" aria-label="Colour scale">
+        <label><input type="radio" name="scale_mode" value="gradient" {{ 'checked' if habit.scale_mode != 'levels' }}><span><b>Smooth gradient</b><small>Colour deepens continuously up to a target amount.</small></span></label>
+        <label><input type="radio" name="scale_mode" value="levels" {{ 'checked' if habit.scale_mode == 'levels' }}><span><b>Levels</b><small>A few stepped shades, like GitHub.</small></span></label>
+      </div>
+
+      <label class="field">Full colour at
+        <input name="target" id="f-target" type="number" step="any" min="0" value="{{ habit.target|num if habit.target else '' }}" placeholder="Auto: {{ heat.cfg.autoTarget|num }}">
+        <small>Amount that gets the deepest shade, in <span id="unit-label">{{ habit.unit|trim }}</span>. Leave blank to base it on your better days (currently {{ heat.cfg.autoTarget|num }}).</small>
+      </label>
+
+      <label class="field" id="levels-field">Level steps
+        <input name="levels" id="f-levels" value="{{ habit.levels or '' }}" placeholder="Auto: {{ heat.cfg.levels|map('num')|join(', ') }}">
+        <small>Where each shade starts, separated by commas (for example 5, 15, 30, 60). Up to 8 levels. Leave blank for automatic steps.</small>
+      </label>
+    </div>
+  </section>
+
+  <div class="sticky-save">
+    <button class="btn" type="button" id="reset">Reset heat-map</button>
+    <a class="btn" href="{{ url_for('track_habit', habit_id=habit.id) }}">Cancel</a>
+    <button class="btn primary" type="submit">Save settings</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const HEAT = {{ heat|tojson }}, FIRST = {{ first|tojson }}, DEFAULTS = {{ defaults|tojson }};
+const $ = id => document.getElementById(id);
+const nice = x => x <= 0 ? 1 : x < 10 ? (Math.round(x * 2) / 2 || 0.5) : x < 100 ? Math.round(x / 5) * 5 : Math.round(x / 10) * 10;
+
+function currentCfg() {
+  const delay = $('f-delay').checked;
+  const color = $('f-color').value || (delay ? DEFAULTS.delay : DEFAULTS[$('f-category').value]);
+  const t = parseFloat($('f-target').value);
+  const target = t > 0 ? t : HEAT.cfg.autoTarget;
+  const custom = [...new Set($('f-levels').value.split(/[,\s;]+/).map(parseFloat).filter(x => x > 0))].sort((a, b) => a - b).slice(0, 8);
+  const levels = custom.length ? custom : [...new Set([.25, .5, .75, 1].map(f => nice(target * f)))].sort((a, b) => a - b);
+  return { color, mode: document.querySelector('[name=scale_mode]:checked').value, target, levels, unit: $('f-unit').value, metric: delay ? 'delay' : 'sum' };
+}
+function refresh() {
+  const cfg = currentCfg();
+  Heat.render($('preview'), { data: HEAT.data, cfg, weeks: 'auto', first: FIRST, minWeeks: 26, cell: 13, gap: 3, minWidth: 560, maxScale: 3 });
+  Heat.legend($('legend'), cfg);
+  $('preview').parentElement.scrollLeft = $('preview').parentElement.scrollWidth;
+  $('levels-field').style.display = cfg.mode === 'levels' ? 'grid' : 'none';
+  $('ref-field').style.display = $('f-delay').checked ? 'grid' : 'none';
+  $('unit-label').textContent = $('f-unit').value;
+  const chosen = $('f-color').value.toLowerCase();
+  document.querySelectorAll('#swatches button[data-c]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c.toLowerCase() === chosen)));
+  if (chosen) $('f-color-pick').value = chosen; else $('f-color-pick').value = cfg.color.toLowerCase();
+}
+document.querySelectorAll('#swatches button[data-c]').forEach(b => b.addEventListener('click', () => { $('f-color').value = b.dataset.c; refresh(); }));
+$('f-color-pick').addEventListener('input', e => { $('f-color').value = e.target.value; refresh(); });
+$('color-default').addEventListener('click', () => { $('f-color').value = ''; refresh(); });
+$('reset').addEventListener('click', () => { $('f-color').value = ''; $('f-target').value = ''; $('f-levels').value = ''; document.querySelector('[name=scale_mode][value=gradient]').checked = true; refresh(); });
+['f-target', 'f-levels', 'f-unit', 'f-delay', 'f-category'].forEach(id => $(id).addEventListener('input', refresh));
+document.querySelectorAll('[name=scale_mode]').forEach(r => r.addEventListener('change', refresh));
+document.addEventListener('themechange', refresh);
+refresh();
+</script>
+{% endblock %}

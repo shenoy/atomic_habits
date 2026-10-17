@@ -1,248 +1,166 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Atomic Habits</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0 auto;
-        padding: 40px 20px;
-        max-width: 900px;
-        background-color: #f4f4f9;
-    }
-
-    .container {
-        background: white;
-        padding: 30px;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    }
-
-    /* --- TABS SYSTEM --- */
-    .tabs-container {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 25px;
-        border-bottom: 2px solid #eef0f2;
-        padding-bottom: 10px;
-    }
-
-    .tab-btn {
-        padding: 10px 20px;
-        border: none;
-        background: none;
-        font-size: 16px;
-        font-weight: bold;
-        color: #5f6368;
-        cursor: pointer;
-        border-radius: 8px;
-        transition: all 0.2s ease;
-    }
-
-    .tab-btn:hover {
-        background: #f0f2f5;
-        color: #1a73e8;
-    }
-
-    .tab-btn.active {
-        color: #1a73e8;
-        background: #e8f0fe;
-    }
-
-    /* Tab content view switching */
-    .tab-content {
-        display: none;
-    }
-    .tab-content.active {
-        display: block;
-    }
-
-    /* --- CARD STYLING --- */
-    .habit-list-wrapper {
-        display: flex;
-        gap: 14px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-
-    .habit-card {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 14px 22px;
-        min-width: 130px;
-        color: white;
-        text-decoration: none;
-        border-radius: 12px;
-        font-weight: bold;
-        font-size: 14px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-        box-sizing: border-box;
-    }
-
-    .habit-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 7px 14px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
-    }
-
-    .card-atomic { background: #673ab7; }
-    .card-completed { background: #1a73e8; }
-    .card-pending { background: #34a853; }
-    .card-manage { background: #5f6368; }
-
-    .sortable-ghost {
-        opacity: 0.4;
-        border: 2px dashed #673ab7;
-        border-radius: 12px;
-    }
-
-    /* Form Styling */
-    .form-container {
-        margin-top: 35px;
-        padding: 25px;
-        background: #fff3e0;
-        border-radius: 12px;
-        border: 1px solid #ffe0b2;
-    }
-    .form-container h3 { margin-top: 0; margin-bottom: 15px; color: #e65100; }
-    .habit-form { display: flex; gap: 10px; flex-wrap: wrap; }
-    .habit-form input {
-        padding: 10px 14px;
-        border: 1px solid #dadce0;
-        border-radius: 8px;
-        font-size: 14px;
-        flex: 1;
-        min-width: 120px;
-    }
-    .habit-form button {
-        padding: 10px 20px;
-        background: #fb8c00;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-    .habit-form button:hover { background: #e65100; }
-
-    @media (max-width: 600px) {
-        body { padding: 10px; max-width: 100%; }
-        .container { padding: 20px 15px; border-radius: 12px; }
-        .habit-list-wrapper { justify-content: center; }
-        .habit-card { width: 100%; min-width: 100%; }
-        .habit-item { width: 100%; }
-        .habit-form { flex-direction: column; }
-        .habit-form input { width: 100%; box-sizing: border-box; }
-    }
-</style>
-</head>
-<body>
-
-    <div class="container">
-        <div class="tabs-container">
-            <button class="tab-btn active" onclick="switchTab('active-habits-tab', this)">🎯 Active Habits</button>
-            <button class="tab-btn" onclick="switchTab('completed-habits-tab', this)">💾 Completed History</button>
-        </div>
-
-        <nav style="margin-bottom: 30px;">
-            <div id="active-habits-tab" class="tab-content active">
-                <div id="habit-list" class="habit-list-wrapper">
-                    <a href="/atomic_habits" class="habit-card card-atomic">
-                        ✨ Atomic Habits
-                    </a>
-
-                    {% for h in all_habits %}
-                        {% if not h.is_permanently_completed %}
-                        <div class="habit-item" data-id="{{ h.id }}">
-                            <a href="/habit/{{ h.name|urlencode }}"
-                               class="habit-card {% if h.id in completed_today_ids %}card-completed{% else %}card-pending{% endif %}">
-                                {% if h.id in completed_today_ids %}✓ {% endif %}{{ h.name }}
-                            </a>
-                        </div>
-                        {% endif %}
-                    {% endfor %}
-
-                    <a href="/manage_library" class="habit-card card-manage">
-                        ⚙️ Manage Library
-                    </a>
-                    <a href="/summary" class="habit-card card-manage">
-                    📋 Summary
-                    </a>
-                </div>
-            </div>
-
-            <div id="completed-habits-tab" class="tab-content">
-                <div class="habit-list-wrapper">
-                    {% for h in all_habits %}
-                        {% if h.is_permanently_completed %}
-                        <div class="habit-item-completed">
-                            <a href="/habit/{{ h.name|urlencode }}" class="habit-card card-completed">
-                                🏆 {{ h.name }} (Done)
-                            </a>
-                        </div>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-            </div>
-        </nav>
-
-        <div class="form-container">
-            <h3>Create New Tracker</h3>
-            <form action="/create_habit" method="POST" class="habit-form">
-                <input type="text" name="name" placeholder="Name (e.g. Reading)" required>
-                <input type="text" name="unit" placeholder="Unit (e.g. mins)" required style="flex: 0 1 100px;">
-                <input type="number" name="goal" placeholder="Daily Goal" required style="flex: 0 1 120px;">
-                <button type="submit">Create Page</button>
-            </form>
-        </div>
+{% extends 'base.html' %}
+{% block title %}{{ tab_label }} · Atomic Habits{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-top">
+    <div>
+      <h1>{{ tab_label }}</h1>
+      <div class="hero-meta">
+        <span><b>{{ logged_today }}</b> of {{ total_active }} logged today</span>
+        <span>Streak <b>{{ streak }}</b> day{{ '' if streak == 1 else 's' }}</span>
+        <span>Best <b>{{ best }}</b> day{{ '' if best == 1 else 's' }}</span>
+      </div>
     </div>
+    <button class="btn primary" type="button" id="open-new">New habit</button>
+  </div>
+  <div class="panel">
+    <div class="heat-scroll"><div id="hero-heat" data-heat-host></div></div>
+    <div class="heat-legend" id="hero-legend"></div>
+    <p class="hint" style="margin:6px 0 0">Each square is a day. Darker means more {{ tab_label|lower }} logged that day.</p>
+  </div>
+</section>
 
-  <div id="treemaps-container"></div>
-  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-  <script src="{{ url_for('static', filename='js/treemap.js') }}"></script>
+<section aria-label="{{ tab_label }} habits">
+  <div class="grid" id="habit-grid">
+    {% for c in cards %}
+    {% set h = c.h %}
+    <article class="hcard {{ 'done' if c.done }} {{ 'is-delay' if h.is_delay }}" data-id="{{ h.id }}" style="--c: {{ c.color }}">
+      <div class="hcard-head">
+        <a class="hname" href="{{ url_for('track_habit', habit_id=h.id) }}">{{ h.name }}</a>
+        {% if c.streak >= 2 %}<span class="streak" title="{{ c.streak }}-day streak">{{ c.streak }}d</span>{% endif %}
+        <button class="grip" type="button" aria-label="Drag to reorder {{ h.name }}">⋮⋮</button>
+      </div>
+      <div>
+        <div class="hcard-stat">
+          <span>Today <b class="tv">{{ c.today_text }}</b></span>
+          {% if not h.is_delay %}<span class="state">{{ 'Goal met' if c.done else 'Goal ' ~ c.goal_text }}</span>{% endif %}
+        </div>
+        {% if not h.is_delay %}<div class="bar" style="margin-top:8px"><i style="width: {{ c.pct }}%"></i></div>{% endif %}
+      </div>
+      <div class="mini" data-heat-host data-id="{{ h.id }}"></div>
+      <form class="quick" data-id="{{ h.id }}" data-delay="{{ 1 if h.is_delay else 0 }}">
+        {% if h.is_delay %}
+          <input type="time" name="time" required aria-label="Time for {{ h.name }} (compared with {{ h.ref_time }})">
+        {% else %}
+          <input type="text" name="value" inputmode="decimal" autocomplete="off" required placeholder="{{ h.unit|trim }}" aria-label="Amount in {{ h.unit|trim }} for {{ h.name }}">
+        {% endif %}
+        <button class="btn sm" type="submit">Log</button>
+      </form>
+      <div class="quick-err" role="alert"></div>
+    </article>
+    {% endfor %}
+    <button class="add-card" type="button" id="open-new-2">+ New {{ tab_label|lower|replace('activities','activity')|replace('books','book')|replace('courses','course') }}</button>
+  </div>
 
+  {% if finished %}
+  <details class="finished">
+    <summary>Finished ({{ finished|length }})</summary>
+    <div class="mini-list">
+      {% for h in finished %}
+      <div class="mini-row" style="--c: {{ h.display_color }}">
+        <span class="dot"></span>
+        <a class="grow" href="{{ url_for('track_habit', habit_id=h.id) }}">{{ h.name }}</a>
+        <span class="muted">{{ finished_totals[h.id]|fmt(h.unit, h.metric) if not h.is_delay }}</span>
+        <form action="{{ url_for('reopen_habit', habit_id=h.id) }}" method="post"><button class="btn sm" type="submit">Reopen</button></form>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+</section>
+
+<section class="today-block" id="today-block" hidden>
+  <h2>Logged today</h2>
+  <p class="hint">Tile size shows how much you logged, grouped by unit.</p>
+  <div id="treemaps-container" data-category="{{ category }}"></div>
+</section>
+
+<dialog id="new-dialog">
+  <form action="{{ url_for('create_habit') }}" method="post" id="new-form">
+    <h2>New habit</h2>
+    <label class="field">Name<input name="name" required maxlength="100" placeholder="e.g. Deep Work, Atomic Habits"></label>
+    <div class="row">
+      <label class="field">Group
+        <select name="category">{% for key, label in categories %}<option value="{{ key }}" {{ 'selected' if key == category }}>{{ label }}</option>{% endfor %}</select>
+      </label>
+      <label class="field">Unit
+        <input name="unit" list="units" value="min" required>
+        <datalist id="units"><option value="min"><option value="hours"><option value="pages"><option value="count"></datalist>
+      </label>
+      <label class="field">Daily goal<input name="goal" type="number" step="any" min="0" value="5" required></label>
+    </div>
+    <label style="display:flex;gap:10px;align-items:flex-start;font-weight:500">
+      <input type="checkbox" name="metric" value="delay" id="delay-toggle" style="margin-top:4px">
+      <span>Track delay from a set time<br><small class="muted">For waking up or going to bed. You log the actual time, the app counts minutes late, and it is drawn in red.</small></span>
+    </label>
+    <label class="field" id="ref-field" style="display:none">Reference time<input type="time" name="ref_time" value="05:00"></label>
+    <div class="actions">
+      <button class="btn" type="button" id="close-new">Cancel</button>
+      <button class="btn primary" type="submit">Create habit</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="{{ url_for('static', filename='js/treemap.js') }}"></script>
 <script>
-    // Tab switching engine
-    function switchTab(tabId, buttonElement) {
-        // Hide all tab views
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        // Remove active class from buttons
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
+const HEAT = {{ heat|tojson }};
+const HERO = {{ hero|tojson }};
+const TODAY = {{ today|tojson }};
 
-        // Show selected tab view and light up button
-        document.getElementById(tabId).classList.add('active');
-        buttonElement.classList.add('active');
-    }
+function drawAll() {
+  Heat.render(document.getElementById('hero-heat'), { data: HERO.data, cfg: HERO.cfg, weeks: 'auto', first: HERO.first, cell: 13, gap: 3, minWidth: 560, maxScale: 3 });
+  Heat.legend(document.getElementById('hero-legend'), HERO.cfg);
+  const hs = document.getElementById('hero-heat').parentElement; hs.scrollLeft = hs.scrollWidth;
+  document.querySelectorAll('.mini').forEach(el => {
+    const h = HEAT[el.dataset.id];
+    Heat.render(el, { data: h.data, cfg: h.cfg, weeks: 24, cell: 9, gap: 2, labels: false, maxScale: 1.9 });
+  });
+}
+drawAll();
+document.addEventListener('themechange', drawAll);
 
-    // Drag and Drop ordering setup
-    const el = document.getElementById('habit-list');
-    Sortable.create(el, {
-        animation: 150,
-        ghostClass: 'sortable-ghost',
-        onEnd: function () {
-            const habitOrder = Array.from(el.querySelectorAll('.habit-item')).map(item => {
-                return item.getAttribute('data-id');
-            });
+// quick log
+const now = () => { const d = new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); };
+document.querySelectorAll('.quick[data-delay="1"] input').forEach(i => i.value = now());
+document.querySelectorAll('.quick').forEach(form => {
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const card = form.closest('.hcard'), err = card.querySelector('.quick-err'), id = form.dataset.id;
+    err.textContent = '';
+    const body = Object.fromEntries(new FormData(form));
+    try {
+      const r = await fetch('/api/log/' + id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (!r.ok) { err.textContent = j.error || 'Could not save.'; return; }
+      HEAT[id].data[j.date] = j.day_value;
+      Heat.render(card.querySelector('.mini'), { data: HEAT[id].data, cfg: HEAT[id].cfg, weeks: 24, cell: 9, gap: 2, labels: false, maxScale: 1.9 });
+      card.querySelector('.tv').textContent = j.today.text;
+      const bar = card.querySelector('.bar i'); if (bar) bar.style.width = j.today.pct + '%';
+      const st = card.querySelector('.state'); if (st) st.textContent = j.today.done ? 'Goal met' : 'Goal ' + j.today.goal_text;
+      card.classList.toggle('done', j.today.done);
+      if (form.dataset.delay !== '1') form.reset();
+    } catch (x) { err.textContent = 'Could not reach the server.'; }
+  });
+});
 
-            fetch('/update_habit_order', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ order: habitOrder })
-            })
-            .then(response => response.json())
-            .then(data => console.log('Order saved:', data))
-            .catch(error => console.error('Error:', error));
-        },
-    });
+// drag to reorder
+if (window.Sortable) Sortable.create(document.getElementById('habit-grid'), {
+  animation: 150, handle: '.grip', draggable: '.hcard', ghostClass: 'sortable-ghost',
+  onEnd() {
+    const order = [...document.querySelectorAll('#habit-grid .hcard')].map(c => c.dataset.id);
+    fetch('/update_habit_order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }) });
+  }
+});
+
+// new habit dialog
+const dlg = document.getElementById('new-dialog');
+['open-new', 'open-new-2'].forEach(id => document.getElementById(id).addEventListener('click', () => { dlg.showModal(); dlg.querySelector('[name=name]').focus(); }));
+document.getElementById('close-new').addEventListener('click', () => dlg.close());
+const toggle = document.getElementById('delay-toggle'), ref = document.getElementById('ref-field');
+toggle.addEventListener('change', () => { ref.style.display = toggle.checked ? 'grid' : 'none'; });
 </script>
-</body>
-</html>
+{% endblock %}

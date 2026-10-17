@@ -1,37 +1,20 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Edit Log Entry</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 500px; margin: auto; background: #f4f4f9; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        /* FIX: Added textarea to the selector so it matches input styling */
-        input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
-        /* FIX: Extra styling specifics for the textarea box */
-        textarea { resize: vertical; min-height: 60px; }
-        button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-        .cancel { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h2>Edit Entry</h2>
-        <form method="POST">
-            <label>Activity/Item Name:</label>
-            <!-- FIX: Swapped input type="text" for a proper textarea element -->
-            <textarea name="activity_name" required>{{ log.activity_name }}</textarea>
-
-            <label>Value ({{ log.parent_habit.unit }}):</label>
-            <input type="number" name="value" value="{{ log.value }}" required>
-
-            <label>Date:</label>
-            <input type="date" name="date" value="{{ log.date_created.strftime('%Y-%m-%d') }}" required>
-
-            <label>Time logged:</label>
-            <input type="time" name="time" value="{{ log.time_created }}">
-
-            <button type="submit">Save Changes</button>
-        </form>
-        <a href="/habit/{{ log.parent_habit.name }}" class="cancel">Cancel</a>
-    </div>
-</body>
+{% extends 'base.html' %}
+{% block title %}Edit entry · {{ habit.name }}{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+{% block content %}
+<a class="crumb" href="{{ url_for('track_habit', habit_id=habit.id) }}">← {{ habit.name }}</a>
+<h1 style="margin-bottom:22px">Edit entry</h1>
+<form method="post" class="panel" style="display:grid; gap:14px">
+  <label class="field">Note<textarea name="activity_name" rows="2" required>{{ log.activity_name }}</textarea></label>
+  <div class="row">
+    <label class="field">{{ 'Delay in minutes (negative = early)' if habit.is_delay else 'Amount (' ~ habit.unit|trim ~ ')' }}
+      <input name="value" inputmode="decimal" value="{{ log.value|num }}" required></label>
+    <label class="field">Date<input type="date" name="date" value="{{ log.date_created.strftime('%Y-%m-%d') }}" required></label>
+    <label class="field">Time logged<input type="time" name="time" value="{{ log.time_created }}"></label>
+  </div>
+  <div style="display:flex; gap:10px; justify-content:flex-end">
+    <a class="btn" href="{{ url_for('track_habit', habit_id=habit.id) }}">Cancel</a>
+    <button class="btn primary" type="submit">Save changes</button>
+  </div>
+</form>
+{% endblock %}
